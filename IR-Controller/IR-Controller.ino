@@ -23,6 +23,7 @@
 // Define rotary encoder pins
 #define ENC_A 2
 #define ENC_B 3
+#define button 16
 
 // Define IR Pins
 #include "PinDefinitionsAndMore.h" //Define macros for input and output pin etc.
@@ -39,6 +40,7 @@ volatile int counter = 0;
 void setup() {
 
   // Set encoder pins and attach interrupts
+  pinMode(button, INPUT_PULLUP);
   pinMode(ENC_A, INPUT_PULLUP);
   pinMode(ENC_B, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(ENC_A), read_encoder, CHANGE);
@@ -63,12 +65,36 @@ uint16_t AddressTwo = 0x5343;
 uint8_t CommandTwo = 0x3B;
 uint8_t ReapeatsTwo = 0;
 
+// Power IR code
+// Backwards IR Code
+uint16_t AddressThree = 0x5343;
+uint8_t CommandThree = 0x1;
+uint8_t ReapeatsThree = 0;
+
 void loop() {
   static int lastCounter = 0;
   // If count has changed print the new value to serial
   if(counter != lastCounter){
     Serial.println(counter);
     lastCounter = counter;
+  }
+
+  // Power button
+  if(digitalRead(button)==0) {
+    Serial.print(F("Send now: address=0x"));
+    Serial.print(AddressThree, HEX);
+    Serial.print(F(" command=0x"));
+    Serial.print(CommandThree, HEX);
+    Serial.print(F(" repeats="));
+    Serial.print(ReapeatsThree);
+    Serial.println();
+
+    Serial.println(F("Send Samsung with 16 bit address"));
+    Serial.flush();
+
+    // Results for the first loop to: Protocol=NEC Address=0x102 Command=0x34 Raw-Data=0xCB340102 (32 bits)
+    IrSender.sendSamsung(AddressThree, CommandThree, ReapeatsThree);
+    delay(1000);
   }
 }
 
@@ -93,9 +119,6 @@ void read_encoder() {
     //      FORWARDS     //
     ///////////////////////   
     int changevalue = 1;
-    if((micros() - _lastIncReadTime) < _pauseLength) {
-      changevalue = _fastIncrement * changevalue; 
-    }
     _lastIncReadTime = micros();
     counter = counter + changevalue;              // Update counter
     //IR Transmission
@@ -119,9 +142,6 @@ void read_encoder() {
     //    BACKWARDS      //
     ///////////////////////
     int changevalue = -1;
-    if((micros() - _lastDecReadTime) < _pauseLength) {
-      changevalue = _fastIncrement * changevalue; 
-    }
     _lastDecReadTime = micros();
     counter = counter + changevalue;              // Update counter
     //IR Transmission
